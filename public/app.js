@@ -288,15 +288,11 @@ async function submitPost() {
     if (!content) return;
 
     try {
-        const post = await api('/api/posts', { method: 'POST', body: { content } });
+        await api('/api/posts', { method: 'POST', body: { content } });
         input.value = '';
         input.style.height = 'auto';
-
-        const container = document.getElementById('feed-posts');
-        const emptyState = document.getElementById('feed-empty');
-        emptyState.style.display = 'none';
-        container.prepend(createPostCard(post));
         showToast('Post shared!');
+        loadFeed();
     } catch (err) {
         showToast(err.message, 'error');
     }
@@ -345,10 +341,8 @@ function createPostCard(post) {
     likeBtn.addEventListener('click', async () => {
         try {
             const result = await api(`/api/posts/${post.id}/like`, { method: 'POST' });
-            const isLiked = result.liked;
-            likeBtn.classList.toggle('liked', isLiked);
-            const count = parseInt(likeBtn.querySelector('span').textContent);
-            likeBtn.querySelector('span').textContent = isLiked ? count + 1 : count - 1;
+            likeBtn.classList.toggle('liked', result.liked);
+            likeBtn.querySelector('span').textContent = result.likeCount;
         } catch { }
     });
 
@@ -371,8 +365,10 @@ function createPostCard(post) {
         deleteBtn.addEventListener('click', async () => {
             if (confirm('Delete this post?')) {
                 await api(`/api/posts/${post.id}`, { method: 'DELETE' });
-                card.remove();
                 showToast('Post deleted');
+                if (currentView === 'feed') loadFeed();
+                else if (currentView === 'profile') loadProfile(currentProfileId || currentUser.id);
+                else if (currentView === 'discover') loadDiscover();
             }
         });
         actions.appendChild(deleteBtn);
@@ -411,9 +407,10 @@ async function toggleComments(card, postId) {
                 });
                 section.insertBefore(createCommentItem(comment), form);
                 input.value = '';
-                // Update comment count
+                // Update comment count on the button
                 const countSpan = card.querySelectorAll('.post-action')[1].querySelector('span');
                 countSpan.textContent = parseInt(countSpan.textContent) + 1;
+                updateBadges();
             } catch (err) {
                 showToast(err.message, 'error');
             }
@@ -536,8 +533,9 @@ function createUserCard(user, options = {}) {
         removeBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             await api(`/api/friends/${user.id}`, { method: 'DELETE' });
-            card.remove();
             showToast('Friend removed');
+            loadFriends();
+            updateBadges();
         });
         actions.appendChild(removeBtn);
 

@@ -389,7 +389,8 @@ app.post('/api/posts/:id/like', requireAuth, (req, res) => {
 
     if (existing) {
         runSql('DELETE FROM likes WHERE user_id = ? AND post_id = ?', [req.session.userId, postId]);
-        res.json({ liked: false });
+        const count = queryOne('SELECT COUNT(*) as c FROM likes WHERE post_id = ?', [postId]);
+        res.json({ liked: false, likeCount: count.c });
     } else {
         runSql('INSERT INTO likes (user_id, post_id) VALUES (?, ?)', [req.session.userId, postId]);
 
@@ -398,7 +399,8 @@ app.post('/api/posts/:id/like', requireAuth, (req, res) => {
             runSql('INSERT INTO notifications (user_id, from_user_id, type, reference_id) VALUES (?, ?, ?, ?)',
                 [post.user_id, req.session.userId, 'like', postId]);
         }
-        res.json({ liked: true });
+        const count = queryOne('SELECT COUNT(*) as c FROM likes WHERE post_id = ?', [postId]);
+        res.json({ liked: true, likeCount: count.c });
     }
 });
 
