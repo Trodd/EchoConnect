@@ -2,7 +2,9 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 
-const DB_PATH = path.join(__dirname, 'social_network.db');
+// Use persistent disk on Render (/data), fall back to local directory
+const DB_DIR = process.env.DB_DIR || __dirname;
+const DB_PATH = path.join(DB_DIR, 'social_network.db');
 
 let db;
 
