@@ -35,12 +35,24 @@ const upload = multer({
     }
 });
 
+// Persistent session secret (survives restarts)
+function getSessionSecret() {
+    const dataDir = process.env.DB_DIR || __dirname;
+    const secretPath = path.join(dataDir, '.session-secret');
+    if (fs.existsSync(secretPath)) {
+        return fs.readFileSync(secretPath, 'utf8').trim();
+    }
+    const secret = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(secretPath, secret);
+    return secret;
+}
+
 // Middleware
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-    secret: crypto.randomBytes(32).toString('hex'),
+    secret: getSessionSecret(),
     resave: false,
     saveUninitialized: false,
     cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
