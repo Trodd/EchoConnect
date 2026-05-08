@@ -206,6 +206,34 @@ textarea {
     color: var(--text-muted);
 }
 
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input {
+    padding-right: 60px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    font-size: 12px;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.toggle-password:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
 .form-error {
     margin-top: 12px;
     padding: 10px 14px;

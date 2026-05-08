@@ -3,6 +3,18 @@ let currentUser = null;
 let currentView = 'feed';
 let currentProfileId = null;
 
+// ============ PASSWORD TOGGLE ============
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Hide';
+    } else {
+        input.type = 'password';
+        btn.textContent = 'Show';
+    }
+}
+
 // ============ API HELPERS ============
 async function api(url, options = {}) {
     const res = await fetch(url, {
