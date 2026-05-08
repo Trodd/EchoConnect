@@ -440,6 +440,20 @@ function createCommentItem(comment) {
     body.querySelector('.name').addEventListener('click', () => switchView('profile', comment.user_id));
 
     item.append(avatar, body);
+
+    if (comment.user_id === currentUser.id) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'comment-delete-btn';
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.title = 'Delete comment';
+        deleteBtn.addEventListener('click', async () => {
+            await api(`/api/comments/${comment.id}`, { method: 'DELETE' });
+            item.remove();
+            showToast('Comment deleted');
+        });
+        item.appendChild(deleteBtn);
+    }
+
     return item;
 }
 

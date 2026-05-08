@@ -460,6 +460,11 @@ app.delete('/api/posts/:id', requireAuth, (req, res) => {
     res.json({ success: true });
 });
 
+app.delete('/api/comments/:id', requireAuth, (req, res) => {
+    runSql('DELETE FROM comments WHERE id = ? AND user_id = ?', [parseInt(req.params.id), req.session.userId]);
+    res.json({ success: true });
+});
+
 // ============ NOTIFICATION ROUTES ============
 
 app.get('/api/notifications', requireAuth, (req, res) => {
