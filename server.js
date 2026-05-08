@@ -10,8 +10,10 @@ const { initDatabase, queryAll, queryOne, runSql } = require('./database');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, 'public', 'uploads');
+// Ensure uploads directory exists (use persistent disk if available)
+const uploadsDir = process.env.DB_DIR
+    ? path.join(process.env.DB_DIR, 'uploads')
+    : path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 // Multer config for image uploads
@@ -35,6 +37,7 @@ const upload = multer({
 
 // Middleware
 app.use(express.json());
+app.use('/uploads', express.static(uploadsDir));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
     secret: crypto.randomBytes(32).toString('hex'),
