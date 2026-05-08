@@ -1155,6 +1155,118 @@ img.avatar {
     color: var(--text-muted);
 }
 
+/* ============ NOTIFICATION BELL ============ */
+.notif-bell-wrapper {
+    position: fixed;
+    top: 16px;
+    right: 24px;
+    z-index: 1000;
+}
+
+.notif-bell-btn {
+    position: relative;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: background var(--transition), border-color var(--transition);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.notif-bell-btn:hover {
+    background: var(--bg-primary);
+    border-color: var(--accent);
+}
+
+.notif-bell-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: var(--danger);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}
+
+.notif-dropdown {
+    position: absolute;
+    top: 52px;
+    right: 0;
+    width: 360px;
+    max-height: 480px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.notif-dropdown-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.notif-dropdown-header h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.notif-dropdown-list {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 400px;
+}
+
+.notif-dropdown-list .notification-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.notif-dropdown-list .notification-item:hover {
+    background: var(--bg-primary);
+}
+
+.notif-dropdown-list .notification-item.unread {
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.notif-dropdown-empty {
+    padding: 30px 16px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .notif-bell-wrapper {
+        top: 12px;
+        right: 12px;
+    }
+
+    .notif-dropdown {
+        width: calc(100vw - 24px);
+        right: -6px;
+    }
+}
+
 /* ============ MESSAGES ============ */
 .messages-container {
     display: flex;

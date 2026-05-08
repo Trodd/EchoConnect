@@ -142,14 +142,6 @@
                         <span>Messages</span>
                         <span class="badge" id="msg-badge" style="display:none"></span>
                     </a>
-                    <a class="nav-link" data-view="notifications">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                            <path d="M13.73 21a2 2 0 01-3.46 0" />
-                        </svg>
-                        <span>Notifications</span>
-                        <span class="badge" id="notif-badge" style="display:none"></span>
-                    </a>
                     <a class="nav-link" data-view="profile">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4-4v2" />
@@ -173,6 +165,25 @@
 
             <!-- Main Content -->
             <main class="content">
+                <!-- Notification Bell -->
+                <div class="notif-bell-wrapper" id="notif-bell-wrapper">
+                    <button class="notif-bell-btn" id="notif-bell-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22">
+                            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                            <path d="M13.73 21a2 2 0 01-3.46 0" />
+                        </svg>
+                        <span class="notif-bell-badge" id="notif-badge" style="display:none"></span>
+                    </button>
+                    <div class="notif-dropdown" id="notif-dropdown" style="display:none">
+                        <div class="notif-dropdown-header">
+                            <h3>Notifications</h3>
+                        </div>
+                        <div id="notifications-list" class="notif-dropdown-list"></div>
+                        <div id="notif-empty" class="notif-dropdown-empty" style="display:none">
+                            <p>You're all caught up!</p>
+                        </div>
+                    </div>
+                </div>
                 <!-- Feed View -->
                 <div id="feed-view" class="view active">
                     <div class="view-header">
@@ -276,7 +287,8 @@
                             <div id="dm-search-results" class="user-list" style="display:none"></div>
                             <div id="conversations-list" class="conversations-list"></div>
                             <div id="conversations-empty" class="empty-state" style="display:none">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                                    class="empty-icon">
                                     <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                                 </svg>
                                 <h3>No messages yet</h3>
@@ -295,22 +307,6 @@
                 </div>
 
                 <!-- Notifications View -->
-                <div id="notifications-view" class="view">
-                    <div class="view-header">
-                        <h2>Notifications</h2>
-                    </div>
-                    <div id="notifications-list" class="notifications-list"></div>
-                    <div id="notif-empty" class="empty-state" style="display:none">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-                            class="empty-icon">
-                            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                            <path d="M13.73 21a2 2 0 01-3.46 0" />
-                        </svg>
-                        <h3>No notifications</h3>
-                        <p>You're all caught up!</p>
-                    </div>
-                </div>
-
                 <!-- Profile View -->
                 <div id="profile-view" class="view">
                     <div class="profile-header" id="profile-header"></div>

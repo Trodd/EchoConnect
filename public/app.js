@@ -154,12 +154,14 @@ function switchView(view, profileId) {
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     document.getElementById(`${view}-view`).classList.add('active');
 
+    // Close notification dropdown when switching views
+    document.getElementById('notif-dropdown').style.display = 'none';
+
     if (view === 'feed') loadFeed();
     else if (view === 'discover') loadDiscover();
     else if (view === 'search') loadSuggestions();
     else if (view === 'friends') loadFriends();
     else if (view === 'messages') loadMessages();
-    else if (view === 'notifications') loadNotifications();
     else if (view === 'profile') loadProfile(profileId || currentUser.id);
 }
 
@@ -224,6 +226,26 @@ async function updateBadges() {
         }
     } catch { }
 }
+
+// ============ NOTIFICATION BELL ============
+document.getElementById('notif-bell-btn').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const dropdown = document.getElementById('notif-dropdown');
+    if (dropdown.style.display === 'none') {
+        dropdown.style.display = 'flex';
+        loadNotifications();
+    } else {
+        dropdown.style.display = 'none';
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    const wrapper = document.getElementById('notif-bell-wrapper');
+    if (!wrapper.contains(e.target)) {
+        document.getElementById('notif-dropdown').style.display = 'none';
+    }
+});
 
 // ============ FEED ============
 async function loadFeed() {
@@ -701,7 +723,7 @@ async function openChat(userId) {
                 <div class="chat-username">@${escapeHtml(user.username)}</div>
             </div>
         `;
-    } catch {}
+    } catch { }
 
     await loadChatMessages(userId);
 
@@ -807,7 +829,7 @@ document.getElementById('dm-search-input').addEventListener('input', async (e) =
                 openChat(parseInt(item.dataset.userId));
             });
         });
-    } catch {}
+    } catch { }
 });
 
 // Send message handlers
