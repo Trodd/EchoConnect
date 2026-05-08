@@ -103,6 +103,7 @@ async function initDatabase() {
     // Add columns if upgrading from older schema
     try { db.run('ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
     try { db.run('ALTER TABLE users ADD COLUMN banner_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
+    try { db.run('ALTER TABLE posts ADD COLUMN image_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
 
     return db;
 }

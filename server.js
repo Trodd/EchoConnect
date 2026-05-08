@@ -327,23 +327,36 @@ app.get('/api/friends/suggestions', requireAuth, (req, res) => {
 
 // ============ POST ROUTES ============
 
-app.post('/api/posts', requireAuth, (req, res) => {
-    const { content } = req.body;
-    if (!content || content.trim().length === 0) {
-        return res.status(400).json({ error: 'Post content is required' });
+app.post('/api/posts', requireAuth, upload.single('image'), (req, res) => {
+    const content = req.body.content;
+    if ((!content || content.trim().length === 0) && !req.file) {
+        return res.status(400).json({ error: 'Post content or image is required' });
     }
-    if (content.length > 1000) {
+    if (content && content.length > 1000) {
         return res.status(400).json({ error: 'Post too long (max 1000 characters)' });
     }
 
-    const result = runSql('INSERT INTO posts (user_id, content) VALUES (?, ?)',
-        [req.session.userId, content.trim()]);
+    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const result = runSql('INSERT INTO posts (user_id, content, image_url) VALUES (?, ?, ?)',
+        [req.session.userId, (content || '').trim(), imageUrl]);
 
-    const post = queryOne(
-        `SELECT p.*, u.username, u.display_name, u.avatar_color, u.avatar_url
-     FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?`,
-        [result.lastInsertRowid]
-    );
+    let post;
+    const insertId = result.lastInsertRowid;
+    if (insertId) {
+        post = queryOne(
+            `SELECT p.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+         FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?`,
+            [insertId]
+        );
+    }
+    if (!post) {
+        post = queryOne(
+            `SELECT p.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+         FROM posts p JOIN users u ON p.user_id = u.id
+         WHERE p.user_id = ? ORDER BY p.id DESC LIMIT 1`,
+            [req.session.userId]
+        );
+    }
 
     res.json({ ...post, likes: 0, comments: [], liked: false, comment_count: 0 });
 });

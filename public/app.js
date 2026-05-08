@@ -81,6 +81,26 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+function linkifyContent(text) {
+    const escaped = escapeHtml(text);
+    return escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+}
+
+function getVideoEmbed(text) {
+    if (!text) return null;
+    // YouTube
+    const ytMatch = text.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+    if (ytMatch) {
+        return `<iframe src="https://www.youtube.com/embed/${ytMatch[1]}" frameborder="0" allowfullscreen></iframe>`;
+    }
+    // Vimeo
+    const vimeoMatch = text.match(/vimeo\.com\/(\d+)/);
+    if (vimeoMatch) {
+        return `<iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" frameborder="0" allowfullscreen></iframe>`;
+    }
+    return null;
+}
+
 // ============ AUTH ============
 document.querySelectorAll('.auth-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -284,19 +304,50 @@ document.getElementById('post-input').addEventListener('input', function () {
 
 async function submitPost() {
     const input = document.getElementById('post-input');
+    const fileInput = document.getElementById('post-image-input');
     const content = input.value.trim();
-    if (!content) return;
+    const file = fileInput.files[0];
+
+    if (!content && !file) return;
 
     try {
-        await api('/api/posts', { method: 'POST', body: { content } });
+        const formData = new FormData();
+        formData.append('content', content);
+        if (file) formData.append('image', file);
+
+        const res = await fetch('/api/posts', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Something went wrong');
+
         input.value = '';
         input.style.height = 'auto';
+        fileInput.value = '';
+        document.getElementById('composer-preview').style.display = 'none';
         showToast('Post shared!');
         loadFeed();
     } catch (err) {
         showToast(err.message, 'error');
     }
 }
+
+// Image preview in composer
+document.getElementById('post-image-input').addEventListener('change', function () {
+    const preview = document.getElementById('composer-preview');
+    const previewImg = document.getElementById('composer-preview-img');
+    if (this.files[0]) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImg.src = e.target.result;
+            preview.style.display = 'block';
+        };
+        reader.readAsDataURL(this.files[0]);
+    }
+});
+
+document.getElementById('composer-preview-remove').addEventListener('click', () => {
+    document.getElementById('post-image-input').value = '';
+    document.getElementById('composer-preview').style.display = 'none';
+});
 
 function createPostCard(post) {
     const card = document.createElement('div');
@@ -326,7 +377,26 @@ function createPostCard(post) {
 
     const content = document.createElement('div');
     content.className = 'post-content';
-    content.textContent = post.content;
+    content.innerHTML = linkifyContent(post.content);
+
+    // Post image
+    if (post.image_url) {
+        const img = document.createElement('img');
+        img.className = 'post-image';
+        img.src = post.image_url;
+        img.alt = 'Post image';
+        img.loading = 'lazy';
+        content.appendChild(img);
+    }
+
+    // Video embed
+    const videoEmbed = getVideoEmbed(post.content);
+    if (videoEmbed) {
+        const embedDiv = document.createElement('div');
+        embedDiv.className = 'post-video-embed';
+        embedDiv.innerHTML = videoEmbed;
+        content.appendChild(embedDiv);
+    }
 
     const actions = document.createElement('div');
     actions.className = 'post-actions';
