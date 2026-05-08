@@ -1,0 +1,6 @@
+node_modules/
+social_network.db
+public/uploads/*
+!public/uploads/.gitkeep
+.env
+*.log
