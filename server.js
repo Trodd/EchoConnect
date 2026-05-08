@@ -417,11 +417,24 @@ app.post('/api/posts/:id/comment', requireAuth, (req, res) => {
     const result = runSql('INSERT INTO comments (user_id, post_id, content) VALUES (?, ?, ?)',
         [req.session.userId, postId, content.trim()]);
 
-    const comment = queryOne(
-        `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url
-     FROM comments c JOIN users u ON c.user_id = u.id WHERE c.id = ?`,
-        [result.lastInsertRowid]
-    );
+    const insertId = result.lastInsertRowid;
+    let comment;
+    if (insertId) {
+        comment = queryOne(
+            `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+         FROM comments c JOIN users u ON c.user_id = u.id WHERE c.id = ?`,
+            [insertId]
+        );
+    }
+    if (!comment) {
+        // Fallback: get the latest comment by this user on this post
+        comment = queryOne(
+            `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+         FROM comments c JOIN users u ON c.user_id = u.id
+         WHERE c.user_id = ? AND c.post_id = ? ORDER BY c.id DESC LIMIT 1`,
+            [req.session.userId, postId]
+        );
+    }
 
     const post = queryOne('SELECT user_id FROM posts WHERE id = ?', [postId]);
     if (post && post.user_id !== req.session.userId) {
