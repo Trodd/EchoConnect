@@ -135,6 +135,13 @@
                         <span>Friends</span>
                         <span class="badge" id="friend-req-badge" style="display:none"></span>
                     </a>
+                    <a class="nav-link" data-view="messages">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                        </svg>
+                        <span>Messages</span>
+                        <span class="badge" id="msg-badge" style="display:none"></span>
+                    </a>
                     <a class="nav-link" data-view="notifications">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -253,6 +260,37 @@
                         </svg>
                         <h3>No friends yet</h3>
                         <p>Search for people and send friend requests!</p>
+                    </div>
+                </div>
+
+                <!-- Messages View -->
+                <div id="messages-view" class="view">
+                    <div class="view-header">
+                        <h2>Messages</h2>
+                    </div>
+                    <div class="messages-container">
+                        <div class="conversations-panel" id="conversations-panel">
+                            <div class="conversations-search">
+                                <input type="text" id="dm-search-input" placeholder="Search users to message...">
+                            </div>
+                            <div id="dm-search-results" class="user-list" style="display:none"></div>
+                            <div id="conversations-list" class="conversations-list"></div>
+                            <div id="conversations-empty" class="empty-state" style="display:none">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+                                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                                </svg>
+                                <h3>No messages yet</h3>
+                                <p>Search for a user to start a conversation!</p>
+                            </div>
+                        </div>
+                        <div class="chat-panel" id="chat-panel" style="display:none">
+                            <div class="chat-header" id="chat-header"></div>
+                            <div class="chat-messages" id="chat-messages"></div>
+                            <div class="chat-input-area">
+                                <textarea id="message-input" placeholder="Type a message..." rows="1"></textarea>
+                                <button class="btn btn-primary" id="send-message-btn">Send</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

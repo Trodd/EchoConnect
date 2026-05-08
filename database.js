@@ -86,6 +86,20 @@ async function initDatabase() {
 
     saveDatabase();
 
+    // Messages table for DMs
+    db.run(`CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sender_id INTEGER NOT NULL,
+    receiver_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    is_read INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
+  )`);
+
+    saveDatabase();
+
     // Add columns if upgrading from older schema
     try { db.run('ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
     try { db.run('ALTER TABLE users ADD COLUMN banner_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }

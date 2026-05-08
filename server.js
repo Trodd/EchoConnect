@@ -513,6 +513,81 @@ app.get('/api/discover/new-members', requireAuth, (req, res) => {
     res.json(users);
 });
 
+// ============ MESSAGES ROUTES ============
+
+// Get conversations list (most recent message from each user)
+app.get('/api/messages/conversations', requireAuth, (req, res) => {
+    const conversations = queryAll(
+        `SELECT u.id, u.username, u.display_name, u.avatar_color, u.avatar_url,
+            m.content as last_message, m.created_at as last_message_at, m.sender_id,
+            (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = ? AND is_read = 0) as unread_count
+         FROM users u
+         INNER JOIN messages m ON m.id = (
+            SELECT id FROM messages
+            WHERE (sender_id = ? AND receiver_id = u.id) OR (sender_id = u.id AND receiver_id = ?)
+            ORDER BY created_at DESC LIMIT 1
+         )
+         WHERE u.id != ?
+         ORDER BY m.created_at DESC`,
+        [req.session.userId, req.session.userId, req.session.userId, req.session.userId]
+    );
+    res.json(conversations);
+});
+
+// Get messages with a specific user
+app.get('/api/messages/:userId', requireAuth, (req, res) => {
+    const otherId = parseInt(req.params.userId);
+    const messages = queryAll(
+        `SELECT m.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+         FROM messages m
+         JOIN users u ON u.id = m.sender_id
+         WHERE (m.sender_id = ? AND m.receiver_id = ?) OR (m.sender_id = ? AND m.receiver_id = ?)
+         ORDER BY m.created_at ASC`,
+        [req.session.userId, otherId, otherId, req.session.userId]
+    );
+    // Mark as read
+    runSql('UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ?', [otherId, req.session.userId]);
+    res.json(messages);
+});
+
+// Send a message
+app.post('/api/messages/:userId', requireAuth, (req, res) => {
+    const receiverId = parseInt(req.params.userId);
+    const { content } = req.body;
+
+    if (!content || !content.trim()) {
+        return res.status(400).json({ error: 'Message cannot be empty' });
+    }
+    if (receiverId === req.session.userId) {
+        return res.status(400).json({ error: 'Cannot message yourself' });
+    }
+
+    const result = runSql(
+        'INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)',
+        [req.session.userId, receiverId, content.trim()]
+    );
+    res.json({ success: true, messageId: result.lastInsertRowid });
+});
+
+// Get unread message count
+app.get('/api/messages-unread-count', requireAuth, (req, res) => {
+    const result = queryOne(
+        'SELECT COUNT(*) as count FROM messages WHERE receiver_id = ? AND is_read = 0',
+        [req.session.userId]
+    );
+    res.json({ count: result.count });
+});
+
+// Look up user by username
+app.get('/api/users/lookup/:username', requireAuth, (req, res) => {
+    const user = queryOne(
+        'SELECT id, username, display_name, bio, avatar_color, avatar_url, banner_url, created_at FROM users WHERE username = ?',
+        [req.params.username.toLowerCase()]
+    );
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(user);
+});
+
 // Serve the SPA
 app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

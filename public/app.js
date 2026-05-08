@@ -158,6 +158,7 @@ function switchView(view, profileId) {
     else if (view === 'discover') loadDiscover();
     else if (view === 'search') loadSuggestions();
     else if (view === 'friends') loadFriends();
+    else if (view === 'messages') loadMessages();
     else if (view === 'notifications') loadNotifications();
     else if (view === 'profile') loadProfile(profileId || currentUser.id);
 }
@@ -192,9 +193,10 @@ async function initApp() {
 
 async function updateBadges() {
     try {
-        const [notifs, requests] = await Promise.all([
+        const [notifs, requests, msgs] = await Promise.all([
             api('/api/notifications/unread-count'),
-            api('/api/friends/requests')
+            api('/api/friends/requests'),
+            api('/api/messages-unread-count')
         ]);
 
         const notifBadge = document.getElementById('notif-badge');
@@ -211,6 +213,14 @@ async function updateBadges() {
             friendBadge.style.display = 'flex';
         } else {
             friendBadge.style.display = 'none';
+        }
+
+        const msgBadge = document.getElementById('msg-badge');
+        if (msgs.count > 0) {
+            msgBadge.textContent = msgs.count;
+            msgBadge.style.display = 'flex';
+        } else {
+            msgBadge.style.display = 'none';
         }
     } catch { }
 }
@@ -623,6 +633,191 @@ async function loadFriends() {
         showToast(err.message, 'error');
     }
 }
+
+// ============ MESSAGES ============
+let currentChatUserId = null;
+let messageRefreshInterval = null;
+
+async function loadMessages() {
+    try {
+        const conversations = await api('/api/messages/conversations');
+        const container = document.getElementById('conversations-list');
+        const emptyState = document.getElementById('conversations-empty');
+        const searchResults = document.getElementById('dm-search-results');
+        searchResults.style.display = 'none';
+
+        if (conversations.length === 0) {
+            container.innerHTML = '';
+            emptyState.style.display = 'block';
+        } else {
+            emptyState.style.display = 'none';
+            container.innerHTML = conversations.map(c => `
+                <div class="conversation-item ${c.id === currentChatUserId ? 'active' : ''}" data-user-id="${c.id}">
+                    ${createAvatarHTML(c)}
+                    <div class="conv-info">
+                        <div class="conv-name">${escapeHtml(c.display_name)}</div>
+                        <div class="conv-preview">${c.sender_id === currentUser.id ? 'You: ' : ''}${escapeHtml(c.last_message.substring(0, 40))}</div>
+                    </div>
+                    <div class="conv-meta">
+                        <span class="conv-time">${formatTime(c.last_message_at)}</span>
+                        ${c.unread_count > 0 ? `<span class="conv-unread">${c.unread_count}</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            container.querySelectorAll('.conversation-item').forEach(item => {
+                item.addEventListener('click', () => openChat(parseInt(item.dataset.userId)));
+            });
+        }
+    } catch (err) {
+        console.error('Failed to load conversations:', err);
+    }
+}
+
+async function openChat(userId) {
+    currentChatUserId = userId;
+    const chatPanel = document.getElementById('chat-panel');
+    const messagesContainer = document.querySelector('.messages-container');
+    chatPanel.style.display = 'flex';
+    messagesContainer.classList.add('chat-open');
+
+    // Mark active conversation
+    document.querySelectorAll('.conversation-item').forEach(item => {
+        item.classList.toggle('active', parseInt(item.dataset.userId) === userId);
+    });
+
+    // Load user info for header
+    try {
+        const user = await api(`/api/users/${userId}`);
+        document.getElementById('chat-header').innerHTML = `
+            <button class="chat-back-btn" onclick="closeChat()">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6" />
+                </svg>
+            </button>
+            ${createAvatarHTML(user)}
+            <div>
+                <div class="chat-user-name">${escapeHtml(user.display_name)}</div>
+                <div class="chat-username">@${escapeHtml(user.username)}</div>
+            </div>
+        `;
+    } catch {}
+
+    await loadChatMessages(userId);
+
+    // Auto-refresh messages
+    if (messageRefreshInterval) clearInterval(messageRefreshInterval);
+    messageRefreshInterval = setInterval(() => loadChatMessages(userId), 3000);
+}
+
+function closeChat() {
+    currentChatUserId = null;
+    const messagesContainer = document.querySelector('.messages-container');
+    messagesContainer.classList.remove('chat-open');
+    document.getElementById('chat-panel').style.display = 'none';
+    if (messageRefreshInterval) {
+        clearInterval(messageRefreshInterval);
+        messageRefreshInterval = null;
+    }
+}
+
+async function loadChatMessages(userId) {
+    try {
+        const messages = await api(`/api/messages/${userId}`);
+        const container = document.getElementById('chat-messages');
+        container.innerHTML = messages.map(m => `
+            <div class="message-bubble ${m.sender_id === currentUser.id ? 'sent' : 'received'}">
+                <div>${escapeHtml(m.content)}</div>
+                <div class="msg-time">${formatTime(m.created_at)}</div>
+            </div>
+        `).join('');
+        container.scrollTop = container.scrollHeight;
+    } catch (err) {
+        console.error('Failed to load messages:', err);
+    }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('message-input');
+    const content = input.value.trim();
+    if (!content || !currentChatUserId) return;
+
+    try {
+        await api(`/api/messages/${currentChatUserId}`, {
+            method: 'POST',
+            body: { content }
+        });
+        input.value = '';
+        await loadChatMessages(currentChatUserId);
+        loadMessages(); // Refresh conversation list
+    } catch (err) {
+        console.error('Failed to send message:', err);
+    }
+}
+
+function createAvatarHTML(user) {
+    if (user.avatar_url) {
+        return `<img src="${user.avatar_url}" class="avatar-sm" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`;
+    }
+    const initial = (user.display_name || user.username || '?')[0].toUpperCase();
+    return `<div class="avatar-sm" style="width:36px;height:36px;border-radius:50%;background:${user.avatar_color || '#6366f1'};display:flex;align-items:center;justify-content:center;color:white;font-weight:600;font-size:14px;">${initial}</div>`;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatTime(dateStr) {
+    const date = new Date(dateStr + 'Z');
+    const now = new Date();
+    const diff = now - date;
+    if (diff < 60000) return 'now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h';
+    if (diff < 604800000) return Math.floor(diff / 86400000) + 'd';
+    return date.toLocaleDateString();
+}
+
+// DM search
+document.getElementById('dm-search-input').addEventListener('input', async (e) => {
+    const query = e.target.value.trim();
+    const resultsDiv = document.getElementById('dm-search-results');
+    if (query.length < 1) {
+        resultsDiv.style.display = 'none';
+        return;
+    }
+    try {
+        const users = await api(`/api/users/search?q=${encodeURIComponent(query)}`);
+        resultsDiv.style.display = 'block';
+        resultsDiv.innerHTML = users.map(u => `
+            <div class="conversation-item" data-user-id="${u.id}">
+                ${createAvatarHTML(u)}
+                <div class="conv-info">
+                    <div class="conv-name">${escapeHtml(u.display_name)}</div>
+                    <div class="conv-preview">@${escapeHtml(u.username)}</div>
+                </div>
+            </div>
+        `).join('');
+        resultsDiv.querySelectorAll('.conversation-item').forEach(item => {
+            item.addEventListener('click', () => {
+                resultsDiv.style.display = 'none';
+                document.getElementById('dm-search-input').value = '';
+                openChat(parseInt(item.dataset.userId));
+            });
+        });
+    } catch {}
+});
+
+// Send message handlers
+document.getElementById('send-message-btn').addEventListener('click', sendMessage);
+document.getElementById('message-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
 
 // ============ NOTIFICATIONS ============
 async function loadNotifications() {
