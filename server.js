@@ -505,8 +505,8 @@ app.get('/{*splat}', (req, res) => {
 
 // Start server after database is ready
 initDatabase().then(() => {
-    const server = app.listen(PORT, () => {
-        console.log(`Echo Connect running at http://localhost:${PORT}`);
+    const server = app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Echo Connect running on port ${PORT}`);
     });
     server.on('error', (err) => {
         console.error('Server error:', err.message);

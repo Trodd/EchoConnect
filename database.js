@@ -7,9 +7,7 @@ const DB_PATH = path.join(__dirname, 'social_network.db');
 let db;
 
 async function initDatabase() {
-    const SQL = await initSqlJs({
-        locateFile: file => path.join(__dirname, 'node_modules', 'sql.js', 'dist', file)
-    });
+    const SQL = await initSqlJs();
 
     if (fs.existsSync(DB_PATH)) {
         const fileBuffer = fs.readFileSync(DB_PATH);
