@@ -437,8 +437,11 @@ function createPostCard(post) {
         try {
             const result = await api(`/api/posts/${post.id}/like`, { method: 'POST' });
             likeBtn.classList.toggle('liked', result.liked);
+            likeBtn.querySelector('svg').setAttribute('fill', result.liked ? 'var(--danger)' : 'none');
             likeBtn.querySelector('span').textContent = result.likeCount;
-        } catch { }
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
     });
 
     // Comment toggle
@@ -719,10 +722,14 @@ function createUserCard(user, options = {}) {
         acceptBtn.textContent = 'Accept';
         acceptBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            await api(`/api/friends/accept/${user.id}`, { method: 'POST' });
-            showToast(`You and ${user.display_name} are now friends!`);
-            loadFriends();
-            updateBadges();
+            try {
+                await api(`/api/friends/accept/${user.id}`, { method: 'POST' });
+                showToast(`You and ${user.display_name} are now friends!`);
+                loadFriends();
+                updateBadges();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
         });
 
         const declineBtn = document.createElement('button');
@@ -730,9 +737,14 @@ function createUserCard(user, options = {}) {
         declineBtn.textContent = 'Decline';
         declineBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            await api(`/api/friends/decline/${user.id}`, { method: 'POST' });
-            card.remove();
-            updateBadges();
+            try {
+                await api(`/api/friends/decline/${user.id}`, { method: 'POST' });
+                showToast('Request declined');
+                loadFriends();
+                updateBadges();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
         });
 
         actions.append(acceptBtn, declineBtn);
@@ -742,10 +754,14 @@ function createUserCard(user, options = {}) {
         removeBtn.textContent = 'Unfriend';
         removeBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            await api(`/api/friends/${user.id}`, { method: 'DELETE' });
-            showToast('Friend removed');
-            loadFriends();
-            updateBadges();
+            try {
+                await api(`/api/friends/${user.id}`, { method: 'DELETE' });
+                showToast('Friend removed');
+                loadFriends();
+                updateBadges();
+            } catch (err) {
+                showToast(err.message, 'error');
+            }
         });
         actions.appendChild(removeBtn);
 
@@ -1197,9 +1213,7 @@ async function loadProfile(userId) {
                 addBtn.className = 'btn btn-primary';
                 addBtn.textContent = 'Add Friend';
                 addBtn.addEventListener('click', async () => {
-                    await api(`/api/friends/request/${userId}`, { method: 'POST' });
-                    showToast('Friend request sent!');
-                    loadProfile(userId);
+                \n                    try { \n                        await api(`/api/friends/request/${userId}`, { method: 'POST' }); \n                        showToast('Friend request sent!'); \n                        loadProfile(userId); \n                        updateBadges(); \n } catch (err) { \n                        showToast(err.message, 'error'); \n }
                 });
                 actionsEl.appendChild(addBtn);
             } else if (friendship.status === 'pending' && friendship.addressee_id === currentUser.id) {
@@ -1207,17 +1221,28 @@ async function loadProfile(userId) {
                 acceptBtn.className = 'btn btn-success';
                 acceptBtn.textContent = 'Accept Request';
                 acceptBtn.addEventListener('click', async () => {
-                    await api(`/api/friends/accept/${userId}`, { method: 'POST' });
-                    showToast('Friend request accepted!');
-                    loadProfile(userId);
+                    try {
+                        await api(`/api/friends/accept/${userId}`, { method: 'POST' });
+                        showToast('Friend request accepted!');
+                        loadProfile(userId);
+                        updateBadges();
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    }
                 });
 
                 const declineBtn = document.createElement('button');
                 declineBtn.className = 'btn btn-danger';
                 declineBtn.textContent = 'Decline';
                 declineBtn.addEventListener('click', async () => {
-                    await api(`/api/friends/decline/${userId}`, { method: 'POST' });
-                    loadProfile(userId);
+                    try {
+                        await api(`/api/friends/decline/${userId}`, { method: 'POST' });
+                        showToast('Request declined');
+                        loadProfile(userId);
+                        updateBadges();
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    }
                 });
 
                 actionsEl.append(acceptBtn, declineBtn);
@@ -1238,9 +1263,14 @@ async function loadProfile(userId) {
                 unfriendBtn.textContent = 'Unfriend';
                 unfriendBtn.addEventListener('click', async () => {
                     if (confirm('Remove this friend?')) {
-                        await api(`/api/friends/${userId}`, { method: 'DELETE' });
-                        showToast('Friend removed');
-                        loadProfile(userId);
+                        try {
+                            await api(`/api/friends/${userId}`, { method: 'DELETE' });
+                            showToast('Friend removed');
+                            loadProfile(userId);
+                            updateBadges();
+                        } catch (err) {
+                            showToast(err.message, 'error');
+                        }
                     }
                 });
                 actionsEl.appendChild(unfriendBtn);
