@@ -1213,7 +1213,14 @@ async function loadProfile(userId) {
                 addBtn.className = 'btn btn-primary';
                 addBtn.textContent = 'Add Friend';
                 addBtn.addEventListener('click', async () => {
-                \n                    try { \n                        await api(`/api/friends/request/${userId}`, { method: 'POST' }); \n                        showToast('Friend request sent!'); \n                        loadProfile(userId); \n                        updateBadges(); \n } catch (err) { \n                        showToast(err.message, 'error'); \n }
+                    try {
+                        await api(`/api/friends/request/${userId}`, { method: 'POST' });
+                        showToast('Friend request sent!');
+                        loadProfile(userId);
+                        updateBadges();
+                    } catch (err) {
+                        showToast(err.message, 'error');
+                    }
                 });
                 actionsEl.appendChild(addBtn);
             } else if (friendship.status === 'pending' && friendship.addressee_id === currentUser.id) {
