@@ -90,13 +90,14 @@ app.post('/api/register', (req, res) => {
 
     try {
         const hash = bcrypt.hashSync(password, 10);
-        const result = runSql(
+        runSql(
             'INSERT INTO users (username, email, password, display_name, avatar_color) VALUES (?, ?, ?, ?, ?)',
             [username.toLowerCase(), email.toLowerCase(), hash, displayName, avatarColor]
         );
 
-        req.session.userId = result.lastInsertRowid;
-        res.json({ success: true, userId: result.lastInsertRowid });
+        const user = queryOne('SELECT id FROM users WHERE username = ?', [username.toLowerCase()]);
+        req.session.userId = user.id;
+        res.json({ success: true, userId: user.id });
     } catch (err) {
         if (err.message && err.message.includes('UNIQUE')) {
             return res.status(400).json({ error: 'Username or email already taken' });

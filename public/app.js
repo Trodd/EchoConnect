@@ -147,6 +147,7 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
             }
         });
         await initApp();
+        showTutorial();
     } catch (err) {
         errEl.textContent = err.message;
         errEl.classList.add('visible');
@@ -1227,6 +1228,22 @@ function showEditProfileModal(user) {
             showToast(err.message, 'error');
         }
     });
+}
+
+// ============ TUTORIAL ============
+function showTutorial() {
+    document.getElementById('tutorial-overlay').style.display = 'flex';
+}
+
+function nextTutorialStep(step) {
+    document.querySelectorAll('.tutorial-step').forEach(s => s.style.display = 'none');
+    document.getElementById(`tutorial-step-${step}`).style.display = 'block';
+    document.querySelectorAll('.tutorial-dot').forEach(d => d.classList.remove('active'));
+    document.querySelector(`.tutorial-dot[data-step="${step}"]`).classList.add('active');
+}
+
+function closeTutorial() {
+    document.getElementById('tutorial-overlay').style.display = 'none';
 }
 
 // ============ BOOT ============

@@ -1264,6 +1264,86 @@ img.avatar {
     color: var(--text-muted);
 }
 
+/* ============ TUTORIAL ============ */
+.tutorial-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+
+.tutorial-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    max-width: 440px;
+    width: 90%;
+    text-align: center;
+    position: relative;
+    animation: fadeInUp 0.3s ease;
+}
+
+.tutorial-icon {
+    color: var(--accent);
+    margin-bottom: 16px;
+}
+
+.tutorial-step h2,
+.tutorial-step h3 {
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.tutorial-step p {
+    color: var(--text-secondary);
+    font-size: 15px;
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.tutorial-step .btn {
+    min-width: 140px;
+}
+
+.tutorial-progress {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 24px;
+}
+
+.tutorial-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background var(--transition);
+}
+
+.tutorial-dot.active {
+    background: var(--accent);
+}
+
+.tutorial-skip {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.tutorial-skip:hover {
+    color: var(--text-primary);
+}
+
 /* ============ NOTIFICATION BELL ============ */
 .notif-bell-wrapper {
     position: fixed;
