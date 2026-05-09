@@ -930,10 +930,94 @@ textarea {
     line-height: 1.4;
 }
 
+.comment-body .comment-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 4px;
+}
+
 .comment-body .time {
     font-size: 11px;
     color: var(--text-muted);
+}
+
+.comment-like-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition);
+}
+
+.comment-like-btn:hover {
+    color: var(--danger);
+}
+
+.comment-like-btn.liked {
+    color: var(--danger);
+}
+
+.comment-like-count {
+    font-size: 12px;
+    min-width: 8px;
+}
+
+.comment-reply-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition);
+}
+
+.comment-reply-btn:hover {
+    color: var(--accent);
+}
+
+.comment-wrapper {
+    position: relative;
+}
+
+.comment-replies {
+    margin-left: 36px;
+    padding-left: 12px;
+    border-left: 2px solid var(--border);
+}
+
+.reply-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: 36px;
+    padding-left: 12px;
+    border-left: 2px solid var(--accent);
     margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.reply-form input {
+    flex: 1;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+}
+
+.reply-form input:focus {
+    border-color: var(--accent);
 }
 
 .comment-form {
@@ -1342,6 +1426,37 @@ img.avatar {
     font-size: 12px;
     color: var(--text-muted);
     flex-shrink: 0;
+}
+
+.notification-post-preview {
+    margin-top: 4px;
+    padding: 6px 10px;
+    background: var(--bg-primary);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 220px;
+}
+
+.post-highlight {
+    animation: postHighlight 2s ease;
+}
+
+@keyframes postHighlight {
+
+    0%,
+    30% {
+        box-shadow: 0 0 0 2px var(--accent), 0 0 16px rgba(79, 70, 229, 0.3);
+    }
+
+    100% {
+        box-shadow: none;
+    }
 }
 
 /* ============ DISCOVER ============ */

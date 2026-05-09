@@ -419,7 +419,7 @@ app.post('/api/posts/:id/like', requireAuth, (req, res) => {
 });
 
 app.post('/api/posts/:id/comment', requireAuth, (req, res) => {
-    const { content } = req.body;
+    const { content, parent_id } = req.body;
     if (!content || content.trim().length === 0) {
         return res.status(400).json({ error: 'Comment cannot be empty' });
     }
@@ -428,14 +428,15 @@ app.post('/api/posts/:id/comment', requireAuth, (req, res) => {
     }
 
     const postId = parseInt(req.params.id);
-    const result = runSql('INSERT INTO comments (user_id, post_id, content) VALUES (?, ?, ?)',
-        [req.session.userId, postId, content.trim()]);
+    const parentId = parent_id ? parseInt(parent_id) : null;
+    const result = runSql('INSERT INTO comments (user_id, post_id, content, parent_id) VALUES (?, ?, ?, ?)',
+        [req.session.userId, postId, content.trim(), parentId]);
 
     const insertId = result.lastInsertRowid;
     let comment;
     if (insertId) {
         comment = queryOne(
-            `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+            `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url, 0 as like_count, 0 as liked
          FROM comments c JOIN users u ON c.user_id = u.id WHERE c.id = ?`,
             [insertId]
         );
@@ -443,7 +444,7 @@ app.post('/api/posts/:id/comment', requireAuth, (req, res) => {
     if (!comment) {
         // Fallback: get the latest comment by this user on this post
         comment = queryOne(
-            `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+            `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url, 0 as like_count, 0 as liked
          FROM comments c JOIN users u ON c.user_id = u.id
          WHERE c.user_id = ? AND c.post_id = ? ORDER BY c.id DESC LIMIT 1`,
             [req.session.userId, postId]
@@ -455,18 +456,44 @@ app.post('/api/posts/:id/comment', requireAuth, (req, res) => {
         runSql('INSERT INTO notifications (user_id, from_user_id, type, reference_id) VALUES (?, ?, ?, ?)',
             [post.user_id, req.session.userId, 'comment', postId]);
     }
+    // Notify parent comment author if replying
+    if (parentId) {
+        const parentComment = queryOne('SELECT user_id FROM comments WHERE id = ?', [parentId]);
+        if (parentComment && parentComment.user_id !== req.session.userId && (!post || parentComment.user_id !== post.user_id)) {
+            runSql('INSERT INTO notifications (user_id, from_user_id, type, reference_id) VALUES (?, ?, ?, ?)',
+                [parentComment.user_id, req.session.userId, 'reply', postId]);
+        }
+    }
 
     res.json(comment);
 });
 
 app.get('/api/posts/:id/comments', requireAuth, (req, res) => {
     const comments = queryAll(
-        `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+        `SELECT c.*, u.username, u.display_name, u.avatar_color, u.avatar_url,
+         (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id) as like_count,
+         (SELECT COUNT(*) FROM comment_likes WHERE comment_id = c.id AND user_id = ?) as liked,
+         (SELECT COUNT(*) FROM comments r WHERE r.parent_id = c.id) as reply_count
      FROM comments c JOIN users u ON c.user_id = u.id
      WHERE c.post_id = ? ORDER BY c.created_at ASC`,
-        [parseInt(req.params.id)]
+        [req.session.userId, parseInt(req.params.id)]
     );
     res.json(comments);
+});
+
+app.post('/api/comments/:id/like', requireAuth, (req, res) => {
+    const commentId = parseInt(req.params.id);
+    const existing = queryOne('SELECT * FROM comment_likes WHERE user_id = ? AND comment_id = ?',
+        [req.session.userId, commentId]);
+
+    if (existing) {
+        runSql('DELETE FROM comment_likes WHERE user_id = ? AND comment_id = ?', [req.session.userId, commentId]);
+    } else {
+        runSql('INSERT INTO comment_likes (user_id, comment_id) VALUES (?, ?)', [req.session.userId, commentId]);
+    }
+    saveDatabase();
+    const count = queryOne('SELECT COUNT(*) as c FROM comment_likes WHERE comment_id = ?', [commentId]);
+    res.json({ liked: !existing, likeCount: count.c });
 });
 
 app.delete('/api/posts/:id', requireAuth, (req, res) => {
@@ -483,8 +510,10 @@ app.delete('/api/comments/:id', requireAuth, (req, res) => {
 
 app.get('/api/notifications', requireAuth, (req, res) => {
     const notifications = queryAll(
-        `SELECT n.*, u.username, u.display_name, u.avatar_color, u.avatar_url
+        `SELECT n.*, u.username, u.display_name, u.avatar_color, u.avatar_url,
+         p.content as post_content
      FROM notifications n JOIN users u ON n.from_user_id = u.id
+     LEFT JOIN posts p ON n.reference_id = p.id AND n.type IN ('comment', 'like', 'reply')
      WHERE n.user_id = ? ORDER BY n.created_at DESC LIMIT 30`,
         [req.session.userId]
     );
@@ -641,6 +670,7 @@ app.post('/api/users/change-password', requireAuth, async (req, res) => {
 // Delete account
 app.delete('/api/users/delete-account', requireAuth, (req, res) => {
     const userId = req.session.userId;
+    runSql('DELETE FROM comment_likes WHERE user_id = ?', [userId]);
     runSql('DELETE FROM comments WHERE user_id = ?', [userId]);
     runSql('DELETE FROM likes WHERE user_id = ?', [userId]);
     runSql('DELETE FROM notifications WHERE user_id = ? OR from_user_id = ?', [userId, userId]);

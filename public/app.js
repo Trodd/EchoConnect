@@ -485,7 +485,17 @@ async function toggleComments(card, postId) {
 
     try {
         const comments = await api(`/api/posts/${postId}/comments`);
-        comments.forEach(c => section.appendChild(createCommentItem(c)));
+        // Separate top-level and replies
+        const topLevel = comments.filter(c => !c.parent_id);
+        const replies = comments.filter(c => c.parent_id);
+        const replyMap = {};
+        replies.forEach(r => {
+            if (!replyMap[r.parent_id]) replyMap[r.parent_id] = [];
+            replyMap[r.parent_id].push(r);
+        });
+        topLevel.forEach(c => {
+            section.appendChild(createCommentItem(c, postId, section, replyMap));
+        });
     } catch { }
 
     // Comment form
@@ -500,9 +510,8 @@ async function toggleComments(card, postId) {
                     method: 'POST',
                     body: { content: input.value.trim() }
                 });
-                section.insertBefore(createCommentItem(comment), form);
+                section.insertBefore(createCommentItem(comment, postId, section, {}), form);
                 input.value = '';
-                // Update comment count on the button
                 const countSpan = card.querySelectorAll('.post-action')[1].querySelector('span');
                 countSpan.textContent = parseInt(countSpan.textContent) + 1;
                 updateBadges();
@@ -518,7 +527,10 @@ async function toggleComments(card, postId) {
     card.appendChild(section);
 }
 
-function createCommentItem(comment) {
+function createCommentItem(comment, postId, section, replyMap) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'comment-wrapper';
+
     const item = document.createElement('div');
     item.className = 'comment-item';
     const avatar = createAvatar(comment, 'avatar-sm');
@@ -527,12 +539,88 @@ function createCommentItem(comment) {
 
     const body = document.createElement('div');
     body.className = 'comment-body';
+    const liked = comment.liked ? true : false;
+    const likeCount = comment.like_count || 0;
+
     body.innerHTML = `
     <div class="name">${escapeHtml(comment.display_name)}</div>
     <div class="text">${escapeHtml(comment.content)}</div>
-    <div class="time">${timeAgo(comment.created_at)}</div>
+    <div class="comment-footer">
+      <span class="time">${timeAgo(comment.created_at)}</span>
+      <button class="comment-like-btn ${liked ? 'liked' : ''}" data-comment-id="${comment.id}">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="${liked ? 'var(--danger)' : 'none'}" stroke="currentColor" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+        </svg>
+        <span class="comment-like-count">${likeCount > 0 ? likeCount : ''}</span>
+      </button>
+      <button class="comment-reply-btn">Reply</button>
+    </div>
   `;
     body.querySelector('.name').addEventListener('click', () => switchView('profile', comment.user_id));
+
+    const likeBtn = body.querySelector('.comment-like-btn');
+    likeBtn.addEventListener('click', async () => {
+        try {
+            const res = await api(`/api/comments/${comment.id}/like`, { method: 'POST' });
+            const svg = likeBtn.querySelector('svg');
+            const countSpan = likeBtn.querySelector('.comment-like-count');
+            if (res.liked) {
+                likeBtn.classList.add('liked');
+                svg.setAttribute('fill', 'var(--danger)');
+            } else {
+                likeBtn.classList.remove('liked');
+                svg.setAttribute('fill', 'none');
+            }
+            countSpan.textContent = res.likeCount > 0 ? res.likeCount : '';
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    });
+
+    // Reply button
+    body.querySelector('.comment-reply-btn').addEventListener('click', () => {
+        // Remove any existing reply forms in this section
+        section.querySelectorAll('.reply-form').forEach(f => f.remove());
+
+        const replyForm = document.createElement('div');
+        replyForm.className = 'reply-form';
+        const replyInput = document.createElement('input');
+        replyInput.placeholder = `Reply to ${comment.display_name}...`;
+        replyInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter' && replyInput.value.trim()) {
+                try {
+                    const reply = await api(`/api/posts/${postId}/comment`, {
+                        method: 'POST',
+                        body: { content: replyInput.value.trim(), parent_id: comment.id }
+                    });
+                    let repliesContainer = wrapper.querySelector('.comment-replies');
+                    if (!repliesContainer) {
+                        repliesContainer = document.createElement('div');
+                        repliesContainer.className = 'comment-replies';
+                        wrapper.appendChild(repliesContainer);
+                    }
+                    repliesContainer.appendChild(createCommentItem(reply, postId, section, {}));
+                    replyForm.remove();
+                    updateBadges();
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            } else if (e.key === 'Escape') {
+                replyForm.remove();
+            }
+        });
+        replyForm.appendChild(createAvatar(currentUser, 'avatar-sm'));
+        replyForm.appendChild(replyInput);
+
+        // Insert reply form after the comment item, before replies
+        const repliesContainer = wrapper.querySelector('.comment-replies');
+        if (repliesContainer) {
+            wrapper.insertBefore(replyForm, repliesContainer);
+        } else {
+            wrapper.appendChild(replyForm);
+        }
+        replyInput.focus();
+    });
 
     item.append(avatar, body);
 
@@ -543,13 +631,26 @@ function createCommentItem(comment) {
         deleteBtn.title = 'Delete comment';
         deleteBtn.addEventListener('click', async () => {
             await api(`/api/comments/${comment.id}`, { method: 'DELETE' });
-            item.remove();
+            wrapper.remove();
             showToast('Comment deleted');
         });
         item.appendChild(deleteBtn);
     }
 
-    return item;
+    wrapper.appendChild(item);
+
+    // Render existing replies
+    const childReplies = replyMap && replyMap[comment.id];
+    if (childReplies && childReplies.length > 0) {
+        const repliesContainer = document.createElement('div');
+        repliesContainer.className = 'comment-replies';
+        childReplies.forEach(r => {
+            repliesContainer.appendChild(createCommentItem(r, postId, section, replyMap));
+        });
+        wrapper.appendChild(repliesContainer);
+    }
+
+    return wrapper;
 }
 
 // ============ SEARCH ============
@@ -969,27 +1070,57 @@ async function loadNotifications() {
                 text.className = 'notification-text';
 
                 let message = '';
+                let postPreview = '';
                 if (n.type === 'friend_request') {
                     message = `<strong>${escapeHtml(n.display_name)}</strong> sent you a friend request`;
                 } else if (n.type === 'friend_accepted') {
                     message = `<strong>${escapeHtml(n.display_name)}</strong> accepted your friend request`;
                 } else if (n.type === 'like') {
                     message = `<strong>${escapeHtml(n.display_name)}</strong> liked your post`;
+                    if (n.post_content) postPreview = n.post_content;
                 } else if (n.type === 'comment') {
                     message = `<strong>${escapeHtml(n.display_name)}</strong> commented on your post`;
+                    if (n.post_content) postPreview = n.post_content;
+                } else if (n.type === 'reply') {
+                    message = `<strong>${escapeHtml(n.display_name)}</strong> replied to your comment`;
+                    if (n.post_content) postPreview = n.post_content;
                 }
                 text.innerHTML = message;
+
+                if (postPreview) {
+                    const preview = document.createElement('div');
+                    preview.className = 'notification-post-preview';
+                    const truncated = postPreview.length > 80 ? postPreview.slice(0, 80) + '…' : postPreview;
+                    preview.textContent = truncated;
+                    text.appendChild(preview);
+                }
 
                 const time = document.createElement('span');
                 time.className = 'notification-time';
                 time.textContent = timeAgo(n.created_at);
 
                 item.append(avatar, text, time);
-                item.addEventListener('click', () => {
-                    if (n.type === 'friend_request' || n.type === 'friend_accepted') {
-                        switchView('profile', n.from_user_id);
-                    }
-                });
+                if (n.type === 'comment' || n.type === 'like' || n.type === 'reply') {
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', () => {
+                        document.getElementById('notif-dropdown').style.display = 'none';
+                        switchView('feed');
+                        setTimeout(() => {
+                            const postEl = document.querySelector(`.post-card[data-post-id="${n.reference_id}"]`);
+                            if (postEl) {
+                                postEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                postEl.classList.add('post-highlight');
+                                setTimeout(() => postEl.classList.remove('post-highlight'), 2000);
+                            }
+                        }, 500);
+                    });
+                } else {
+                    item.addEventListener('click', () => {
+                        if (n.type === 'friend_request' || n.type === 'friend_accepted') {
+                            switchView('profile', n.from_user_id);
+                        }
+                    });
+                }
 
                 container.appendChild(item);
             });

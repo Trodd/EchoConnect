@@ -9,16 +9,16 @@ const DB_PATH = path.join(DB_DIR, 'social_network.db');
 let db;
 
 async function initDatabase() {
-    const SQL = await initSqlJs();
+  const SQL = await initSqlJs();
 
-    if (fs.existsSync(DB_PATH)) {
-        const fileBuffer = fs.readFileSync(DB_PATH);
-        db = new SQL.Database(fileBuffer);
-    } else {
-        db = new SQL.Database();
-    }
+  if (fs.existsSync(DB_PATH)) {
+    const fileBuffer = fs.readFileSync(DB_PATH);
+    db = new SQL.Database(fileBuffer);
+  } else {
+    db = new SQL.Database();
+  }
 
-    db.run(`CREATE TABLE IF NOT EXISTS users (
+  db.run(`CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
@@ -32,7 +32,7 @@ async function initDatabase() {
     last_seen DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS posts (
+  db.run(`CREATE TABLE IF NOT EXISTS posts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     content TEXT NOT NULL,
@@ -40,7 +40,7 @@ async function initDatabase() {
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS likes (
+  db.run(`CREATE TABLE IF NOT EXISTS likes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     post_id INTEGER NOT NULL,
@@ -50,7 +50,7 @@ async function initDatabase() {
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
   )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS comments (
+  db.run(`CREATE TABLE IF NOT EXISTS comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     post_id INTEGER NOT NULL,
@@ -60,7 +60,7 @@ async function initDatabase() {
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
   )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS friendships (
+  db.run(`CREATE TABLE IF NOT EXISTS friendships (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     requester_id INTEGER NOT NULL,
     addressee_id INTEGER NOT NULL,
@@ -72,7 +72,7 @@ async function initDatabase() {
     FOREIGN KEY (addressee_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
-    db.run(`CREATE TABLE IF NOT EXISTS notifications (
+  db.run(`CREATE TABLE IF NOT EXISTS notifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     from_user_id INTEGER NOT NULL,
@@ -84,10 +84,21 @@ async function initDatabase() {
     FOREIGN KEY (from_user_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
-    saveDatabase();
+  saveDatabase();
 
-    // Messages table for DMs
-    db.run(`CREATE TABLE IF NOT EXISTS messages (
+  // Comment likes table
+  db.run(`CREATE TABLE IF NOT EXISTS comment_likes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    comment_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id, comment_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (comment_id) REFERENCES comments(id) ON DELETE CASCADE
+  )`);
+
+  // Messages table for DMs
+  db.run(`CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     sender_id INTEGER NOT NULL,
     receiver_id INTEGER NOT NULL,
@@ -98,45 +109,46 @@ async function initDatabase() {
     FOREIGN KEY (receiver_id) REFERENCES users(id) ON DELETE CASCADE
   )`);
 
-    saveDatabase();
+  saveDatabase();
 
-    // Add columns if upgrading from older schema
-    try { db.run('ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
-    try { db.run('ALTER TABLE users ADD COLUMN banner_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
-    try { db.run('ALTER TABLE posts ADD COLUMN image_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
+  // Add columns if upgrading from older schema
+  try { db.run('ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
+  try { db.run('ALTER TABLE users ADD COLUMN banner_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
+  try { db.run('ALTER TABLE posts ADD COLUMN image_url TEXT DEFAULT NULL'); saveDatabase(); } catch { }
+  try { db.run('ALTER TABLE comments ADD COLUMN parent_id INTEGER DEFAULT NULL'); saveDatabase(); } catch { }
 
-    return db;
+  return db;
 }
 
 function saveDatabase() {
-    const data = db.export();
-    const buffer = Buffer.from(data);
-    fs.writeFileSync(DB_PATH, buffer);
+  const data = db.export();
+  const buffer = Buffer.from(data);
+  fs.writeFileSync(DB_PATH, buffer);
 }
 
 function queryAll(sql, params = []) {
-    const stmt = db.prepare(sql);
-    stmt.bind(params);
-    const results = [];
-    while (stmt.step()) {
-        results.push(stmt.getAsObject());
-    }
-    stmt.free();
-    return results;
+  const stmt = db.prepare(sql);
+  stmt.bind(params);
+  const results = [];
+  while (stmt.step()) {
+    results.push(stmt.getAsObject());
+  }
+  stmt.free();
+  return results;
 }
 
 function queryOne(sql, params = []) {
-    const results = queryAll(sql, params);
-    return results[0] || null;
+  const results = queryAll(sql, params);
+  return results[0] || null;
 }
 
 function runSql(sql, params = []) {
-    db.run(sql, params);
-    saveDatabase();
-    return {
-        lastInsertRowid: db.exec("SELECT last_insert_rowid()")[0]?.values[0]?.[0],
-        changes: db.getRowsModified()
-    };
+  db.run(sql, params);
+  saveDatabase();
+  return {
+    lastInsertRowid: db.exec("SELECT last_insert_rowid()")[0]?.values[0]?.[0],
+    changes: db.getRowsModified()
+  };
 }
 
 module.exports = { initDatabase, queryAll, queryOne, runSql, saveDatabase };
