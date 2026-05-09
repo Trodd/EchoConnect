@@ -622,6 +622,38 @@ app.get('/api/users/lookup/:username', requireAuth, (req, res) => {
     res.json(user);
 });
 
+// Change password
+app.post('/api/users/change-password', requireAuth, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'All fields required' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters' });
+
+    const user = queryOne('SELECT * FROM users WHERE id = ?', [req.session.userId]);
+    const valid = await bcrypt.compare(currentPassword, user.password);
+    if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    runSql('UPDATE users SET password = ? WHERE id = ?', [hash, req.session.userId]);
+    saveDatabase();
+    res.json({ success: true });
+});
+
+// Delete account
+app.delete('/api/users/delete-account', requireAuth, (req, res) => {
+    const userId = req.session.userId;
+    runSql('DELETE FROM comments WHERE user_id = ?', [userId]);
+    runSql('DELETE FROM likes WHERE user_id = ?', [userId]);
+    runSql('DELETE FROM notifications WHERE user_id = ? OR from_user_id = ?', [userId, userId]);
+    runSql('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?', [userId, userId]);
+    runSql('DELETE FROM friendships WHERE user_id = ? OR friend_id = ?', [userId, userId]);
+    runSql('DELETE FROM posts WHERE user_id = ?', [userId]);
+    runSql('DELETE FROM users WHERE id = ?', [userId]);
+    saveDatabase();
+    req.session.destroy(() => {
+        res.json({ success: true });
+    });
+});
+
 // Serve the SPA
 app.get('/{*splat}', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

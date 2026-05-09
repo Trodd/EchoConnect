@@ -157,8 +157,32 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
 document.getElementById('logout-btn').addEventListener('click', async () => {
     await api('/api/logout', { method: 'POST' });
     currentUser = null;
+    document.getElementById('user-menu').style.display = 'none';
     document.getElementById('auth-screen').classList.add('active');
     document.getElementById('main-app').classList.remove('active');
+});
+
+// ============ USER MENU ============
+function toggleUserMenu() {
+    const menu = document.getElementById('user-menu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+
+function userMenuAction(action) {
+    document.getElementById('user-menu').style.display = 'none';
+    if (action === 'profile') {
+        switchView('profile', currentUser.id);
+    } else if (action === 'settings') {
+        switchView('settings');
+    }
+}
+
+// Close user menu when clicking outside
+document.addEventListener('click', (e) => {
+    const footer = document.querySelector('.sidebar-footer');
+    if (!footer.contains(e.target)) {
+        document.getElementById('user-menu').style.display = 'none';
+    }
 });
 
 // ============ NAVIGATION ============
@@ -1244,6 +1268,95 @@ function nextTutorialStep(step) {
 
 function closeTutorial() {
     document.getElementById('tutorial-overlay').style.display = 'none';
+}
+
+// ============ SETTINGS ============
+function settingsEditProfile() {
+    switchView('profile', currentUser.id);
+    // Small delay so the profile loads first
+    setTimeout(() => {
+        const editBtn = document.querySelector('#profile-header .btn-secondary');
+        if (editBtn) editBtn.click();
+    }, 300);
+}
+
+function showChangePasswordModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+        <div class="modal-content">
+            <h3>Change Password</h3>
+            <div class="form-group">
+                <label>Current Password</label>
+                <input type="password" id="current-password" placeholder="Enter current password">
+            </div>
+            <div class="form-group">
+                <label>New Password</label>
+                <input type="password" id="new-password" placeholder="At least 6 characters">
+            </div>
+            <div class="form-group">
+                <label>Confirm New Password</label>
+                <input type="password" id="confirm-password" placeholder="Confirm new password">
+            </div>
+            <div id="password-error" class="form-error" style="display:none"></div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+                <button class="btn btn-primary" id="save-password-btn">Save</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    document.getElementById('save-password-btn').addEventListener('click', async () => {
+        const current = document.getElementById('current-password').value;
+        const newPass = document.getElementById('new-password').value;
+        const confirm = document.getElementById('confirm-password').value;
+        const errEl = document.getElementById('password-error');
+
+        if (!current || !newPass || !confirm) {
+            errEl.textContent = 'All fields are required';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (newPass.length < 6) {
+            errEl.textContent = 'New password must be at least 6 characters';
+            errEl.style.display = 'block';
+            return;
+        }
+        if (newPass !== confirm) {
+            errEl.textContent = 'Passwords do not match';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        try {
+            await api('/api/users/change-password', {
+                method: 'POST',
+                body: { currentPassword: current, newPassword: newPass }
+            });
+            overlay.remove();
+            showToast('Password changed successfully!');
+        } catch (err) {
+            errEl.textContent = err.message;
+            errEl.style.display = 'block';
+        }
+    });
+}
+
+async function deleteAccount() {
+    if (!confirm('Are you sure you want to delete your account? This cannot be undone.')) return;
+    if (!confirm('This will permanently delete all your posts, messages, and data. Continue?')) return;
+
+    try {
+        await api('/api/users/delete-account', { method: 'DELETE' });
+        currentUser = null;
+        document.getElementById('auth-screen').classList.add('active');
+        document.getElementById('main-app').classList.remove('active');
+        showToast('Account deleted');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
 }
 
 // ============ BOOT ============
